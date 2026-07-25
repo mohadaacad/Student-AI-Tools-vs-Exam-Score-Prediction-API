@@ -1,0 +1,86 @@
+import joblib
+import logging
+from pathlib import Path
+import pandas as pd
+from sklearn.preprocessing import OneHotEncoder
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+# Define the target path for saving the encoder
+ENCODER_PATH = Path("models/encoder.pkl")
+
+
+def save_and_reload_encoder(encoder: OneHotEncoder, sample_df: pd.DataFrame) -> OneHotEncoder:
+    """Save a fitted OneHotEncoder to disk using joblib and demonstrate reloading it.
+
+    Parameters:
+    - encoder (OneHotEncoder): The fitted OneHotEncoder instance.
+    - sample_df (pd.DataFrame): Sample categorical data to test encoding after reloading.
+
+    Returns:
+    - OneHotEncoder: The reloaded encoder instance.
+    """
+    try:
+        # 1. Ensure the models directory exists automatically
+        ENCODER_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+        # 2. Use Joblib to save as models/encoder.pkl
+        logger.info(f"Saving fitted OneHotEncoder to {ENCODER_PATH}...")
+        joblib.dump(encoder, ENCODER_PATH)
+        logger.info("Encoder successfully saved.")
+
+    except Exception as e:
+        logger.error(f"Failed to save the encoder: {e}")
+        raise
+
+    # 3. Demonstrate how to reload the encoder later with exception handling
+    try:
+        logger.info(f"Reloading encoder from {ENCODER_PATH}...")
+        if not ENCODER_PATH.exists():
+            raise FileNotFoundError(f"Encoder file not found at {ENCODER_PATH}")
+
+        reloaded_encoder = joblib.load(ENCODER_PATH)
+        logger.info("Encoder successfully reloaded.")
+
+        # Demonstrate using the reloaded encoder on sample categorical data
+        encoded_array = reloaded_encoder.transform(sample_df)
+        feature_names = reloaded_encoder.get_feature_names_out(sample_df.columns)
+        encoded_df = pd.DataFrame(encoded_array, columns=feature_names, index=sample_df.index)
+        
+        logger.info(f"Successfully transformed sample categorical data using reloaded encoder. Shape: {encoded_df.shape}")
+        return reloaded_encoder
+
+    except Exception as e:
+        logger.error(f"Failed to reload or use the encoder: {e}")
+        raise
+
+
+# --- Demonstration Example ---
+if __name__ == "__main__":
+    try:
+        # 1. Create mock categorical training data and fit a OneHotEncoder
+        mock_train_df = pd.DataFrame({
+            "Education_Level": ["High School", "Undergraduate", "Graduate", "High School"],
+            "Uses_AI": ["Yes", "No", "Yes", "Yes"]
+        })
+        
+        logger.info("Fitting OneHotEncoder on mock categorical data...")
+        my_encoder = OneHotEncoder(sparse_output=False, handle_unknown="ignore")
+        my_encoder.fit(mock_train_df)
+
+        # 2. Test data to transform with the reloaded encoder
+        mock_test_df = pd.DataFrame({
+            "Education_Level": ["Undergraduate", "Graduate"],
+            "Uses_AI": ["Yes", "No"]
+        })
+
+        # 3. Call the save and reload workflow function
+        loaded_encoder_instance = save_and_reload_encoder(my_encoder, mock_test_df)
+
+    except Exception as main_err:
+        logger.critical(f"Execution failed: {main_err}")
