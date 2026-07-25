@@ -1,0 +1,76 @@
+import joblib
+import logging
+from pathlib import Path
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+
+# Configure logging for professional error tracking
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+# Define the target path for saving the scaler
+SCALER_PATH = Path("models/scaler.pkl")
+
+
+def save_and_reload_scaler(scaler: StandardScaler, sample_data: np.ndarray) -> StandardScaler:
+    """Save a fitted StandardScaler to disk using joblib and demonstrate reloading it.
+
+    Parameters:
+    - scaler (StandardScaler): The fitted StandardScaler instance.
+    - sample_data (np.ndarray): Sample data to test transformation after reloading.
+
+    Returns:
+    - StandardScaler: The reloaded scaler instance.
+    """
+    try:
+        # Requirement: Ensure the models directory exists automatically
+        SCALER_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+        # Requirement: Use Joblib to save as models/scaler.pkl
+        logger.info(f"Saving fitted StandardScaler to {SCALER_PATH}...")
+        joblib.dump(scaler, SCALER_PATH)
+        logger.info("Scaler successfully saved.")
+
+    except Exception as e:
+        logger.error(f"Failed to save the scaler: {e}")
+        raise
+
+    # Requirement: Show how to reload the scaler later with exception handling
+    try:
+        logger.info(f"Reloading scaler from {SCALER_PATH}...")
+        if not SCALER_PATH.exists():
+            raise FileNotFoundError(f"Scaler file not found at {SCALER_PATH}")
+
+        reloaded_scaler = joblib.load(SCALER_PATH)
+        logger.info("Scaler successfully reloaded.")
+
+        # Demonstrate using the reloaded scaler on sample data
+        transformed_sample = reloaded_scaler.transform(sample_data)
+        logger.info(f"Successfully transformed sample data using reloaded scaler. Shape: {transformed_sample.shape}")
+
+        return reloaded_scaler
+
+    except Exception as e:
+        logger.error(f"Failed to reload or use the scaler: {e}")
+        raise
+
+
+# --- Demonstration Example ---
+if __name__ == "__main__":
+    try:
+        # 1. Create mock training data and fit a StandardScaler
+        mock_training_data = np.array([[10, 2.5], [20, 5.0], [30, 7.5], [40, 10.0]])
+        
+        logger.info("Fitting StandardScaler on mock data...")
+        my_scaler = StandardScaler()
+        my_scaler.fit(mock_training_data)
+
+        # 2. Call the save and reload workflow function
+        new_test_data = np.array([[15, 3.0], [25, 6.0]])
+        loaded_scaler_instance = save_and_reload_scaler(my_scaler, new_test_data)
+
+    except Exception as main_err:
+        logger.critical(f"Execution failed: {main_err}")
